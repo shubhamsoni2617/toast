@@ -1,0 +1,113 @@
+import React from 'react';
+import Snackbar from '@mui/material/Snackbar';
+import { makeStyles } from '@mui/styles';
+import { Alert, Slide } from '@mui/material';
+
+const styles = () => ({
+  root: {
+    background: '#091624',
+  },
+});
+
+const useStyles = makeStyles(styles);
+
+function CustomSnackbar(props) {
+  const classes = useStyles();
+
+  return (
+    <Snackbar
+      anchorOrigin={{
+        vertical: 'top',
+        horizontal: 'right',
+      }}
+      autoHideDuration={5000}
+      open={props.show}
+      onClose={props.onClose}
+      TransitionComponent={Slide}
+    >
+      <Alert
+        variant='filled'
+        onClose={props.onClose}
+        severity={props.variant}
+        classes={{ filledInfo: classes.root }}
+      >
+        {props.title}
+      </Alert>
+    </Snackbar>
+    // <Snackbar {...props} autoHideDuration={6000} message='Note archived' />
+  );
+}
+
+const ConfirmationOptions = {
+  catchOnCancel: false,
+  show: false,
+
+  variant: 'info',
+  title: '',
+  description: '',
+};
+
+const ConfirmationServiceContext = React.createContext(Promise.reject);
+
+export const useConfirmation = () =>
+  React.useContext(ConfirmationServiceContext);
+
+export const ConfirmationServiceProvider = ({ children }) => {
+  const [confirmationState, setConfirmationState] =
+    React.useState(ConfirmationOptions);
+
+  const awaitingPromiseRef = React.useRef();
+
+  const openConfirmation = (options = ConfirmationOptions) => {
+    setConfirmationState(options);
+    return new Promise((resolve, reject) => {
+      awaitingPromiseRef.current = { resolve, reject };
+    });
+  };
+
+  const handleClose = () => {
+    if (confirmationState.catchOnCancel && awaitingPromiseRef.current) {
+      awaitingPromiseRef.current.reject();
+    }
+
+    setConfirmationState(null);
+  };
+
+  const handleSubmit = () => {
+    if (awaitingPromiseRef.current) {
+      awaitingPromiseRef.current.resolve();
+    }
+
+    setConfirmationState(null);
+  };
+
+  return (
+    <>
+      <ConfirmationServiceContext.Provider value={openConfirmation}>
+        {children}
+      </ConfirmationServiceContext.Provider>
+
+      <CustomSnackbar
+        open={Boolean(confirmationState)}
+        onSubmit={handleSubmit}
+        onClose={handleClose}
+        {...confirmationState}
+      />
+    </>
+  );
+};
+
+
+
+   const confirm = useConfirmation();
+
+
+
+ confirm({
+            variant: 'error',
+            show: true,
+            catchOnCancel: true,
+            title: 'Are you sure you want to remove this burrito?',
+            description:
+              'If you will remove this burrito you will regret it 😡',
+          })
